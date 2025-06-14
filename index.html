@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>AcuCode 3 Fixed</title>
+  <title>AcuCode 3 with Character Editor</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <style>
     body { margin: 0; font-family: sans-serif; }
@@ -19,7 +19,6 @@
     <button id="load">📂 Load</button>
   </div>
   <canvas id="canvasArea" width="800" height="300"></canvas>
-  <img id="spriteImg" src="https://i.imgur.com/9TLuW2P.png" style="display:none;" />
 
   <xml id="toolbox" style="display:none">
     <category name="Events" colour="60">
@@ -36,6 +35,7 @@
       <block type="draw_square"></block>
       <block type="change_costume"></block>
       <block type="set_backdrop"></block>
+      <block type="character_editor"></block>
     </category>
     <category name="Control" colour="230">
       <block type="controls_repeat_ext">
@@ -63,8 +63,20 @@
 
     const canvas = document.getElementById('canvasArea');
     const ctx = canvas.getContext('2d');
-    const spriteImg = document.getElementById('spriteImg');
 
+    // Preload costumes images
+    const costumes = {
+      default: new Image(),
+      reversed: new Image(),
+      cat: new Image(),
+      dog: new Image()
+    };
+    costumes.default.src = "https://i.imgur.com/9TLuW2P.png";    // default sprite
+    costumes.reversed.src = "https://i.imgur.com/ghn6RMu.png";   // reversed sprite
+    costumes.cat.src = "https://i.imgur.com/uC1ZT5X.png";        // cat sprite
+    costumes.dog.src = "https://i.imgur.com/h5SZkmB.png";        // dog sprite
+
+    // Initial state
     const state = {
       x: 400,
       y: 150,
@@ -73,23 +85,33 @@
       costume: "default"
     };
 
+    // Draw sprite function draws current costume at current position and angle
     function drawSprite() {
       const size = 40;
+      const img = costumes[state.costume];
+      if (!img.complete) {
+        img.onload = () => drawSprite();
+        return;
+      }
       ctx.save();
       ctx.translate(state.x, state.y);
       ctx.rotate(state.angle * Math.PI / 180);
-      ctx.drawImage(spriteImg, -size / 2, -size / 2, size, size);
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
       ctx.restore();
     }
 
+    // Blockly blocks & generators
+
     Blockly.Blocks['when_run'] = {
       init: function () {
-        this.appendDummyInput().appendField("when Run clicked");
-        this.setNextStatement(true);
+        this.appendStatementInput("DO").appendField("when Run clicked");
         this.setColour(60);
       },
     };
-    Blockly.JavaScript['when_run'] = () => "";
+    Blockly.JavaScript['when_run'] = function(block) {
+      const statements_do = Blockly.JavaScript.statementToCode(block, 'DO');
+      return statements_do;
+    };
 
     Blockly.Blocks['move_forward'] = {
       init: function () {
@@ -166,6 +188,8 @@
             new Blockly.FieldDropdown([
               ["default", "default"],
               ["reversed", "reversed"],
+              ["cat", "cat"],
+              ["dog", "dog"]
             ]),
             "COSTUME"
           );
@@ -176,11 +200,7 @@
     };
     Blockly.JavaScript["change_costume"] = (block) => {
       const costume = block.getFieldValue("COSTUME");
-      return `spriteImg.src = "${
-        costume === "reversed"
-          ? "https://i.imgur.com/ghn6RMu.png"
-          : "https://i.imgur.com/9TLuW2P.png"
-      }";\n`;
+      return `state.costume = "${costume}";\n`;
     };
 
     Blockly.Blocks['set_backdrop'] = {
@@ -195,9 +215,33 @@
     };
     Blockly.JavaScript['set_backdrop'] = block => {
       const color = block.getFieldValue('COLOR');
-      return `canvas.style.background = "${color}";\n`;
+      return `canvas.style.background = "${color}"; state.backdrop="${color}";\n`;
     };
 
+    // NEW: Character Editor block (sets costume)
+    Blockly.Blocks['character_editor'] = {
+      init: function() {
+        this.appendDummyInput()
+          .appendField("Character Editor - set costume")
+          .appendField(new Blockly.FieldDropdown([
+            ["default", "default"],
+            ["reversed", "reversed"],
+            ["cat", "cat"],
+            ["dog", "dog"]
+          ]), "COSTUME");
+        this.setColour(290);
+        this.setTooltip("Change the sprite costume");
+        this.setHelpUrl("");
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+      }
+    };
+    Blockly.JavaScript['character_editor'] = function(block) {
+      const costume = block.getFieldValue('COSTUME');
+      return `state.costume = "${costume}";\n`;
+    };
+
+    // Movement helper
     function moveForward() {
       const rad = (state.angle * Math.PI) / 180;
       const newX = state.x + Math.cos(rad) * 50;
@@ -210,8 +254,11 @@
       state.y = newY;
     }
 
+    // Run the code
     function run() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.style.background = state.backdrop; // keep backdrop
+
       const code = Blockly.JavaScript.workspaceToCode(workspace);
 
       const runCode = () => {
@@ -229,11 +276,7 @@
         }
       };
 
-      if (!spriteImg.complete) {
-        spriteImg.onload = runCode;
-      } else {
-        runCode();
-      }
+      runCode();
     }
 
     function save() {
@@ -246,9 +289,14 @@
     function load() {
       const text = localStorage.getItem("acucode3");
       if (text) {
-        const xml = Blockly.Xml.textToDom(text);
-        Blockly.Xml.clearWorkspaceAndLoadFromXml(xml, workspace);
-        alert("Loaded!");
+        try {
+          const xml = Blockly.Xml.textToDom(text);
+          workspace.clear();
+          Blockly.Xml.domToWorkspace(xml, workspace);
+          alert("Loaded!");
+        } catch (e) {
+          alert("Error loading saved project: " + e.message);
+        }
       } else {
         alert("No saved project.");
       }
@@ -258,7 +306,13 @@
     document.getElementById("save").onclick = save;
     document.getElementById("load").onclick = load;
 
-    window.onload = load;
+    window.onload = () => {
+      load();
+      // Draw initial sprite
+      ctx.fillStyle = state.backdrop;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawSprite();
+    };
   </script>
 </body>
 </html>

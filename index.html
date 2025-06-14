@@ -2,317 +2,87 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>AcuCode 3 with Character Editor</title>
+  <title>Simple Blockly Sprite Test</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <style>
-    body { margin: 0; font-family: sans-serif; }
-    #blocklyDiv { height: 55vh; width: 100%; }
-    #controls { padding: 10px; background: #f0f0f0; display: flex; gap: 8px; }
-    #canvasArea { width: 100%; height: 30vh; border: 1px solid #ccc; background: #ffffff; }
+    #blocklyDiv { height: 350px; width: 100%; }
+    #canvasArea { border: 1px solid black; }
   </style>
 </head>
 <body>
   <div id="blocklyDiv"></div>
-  <div id="controls">
-    <button id="run">▶️ Run</button>
-    <button id="save">💾 Save</button>
-    <button id="load">📂 Load</button>
-  </div>
-  <canvas id="canvasArea" width="800" height="300"></canvas>
+  <button id="run">Run</button>
+  <canvas id="canvasArea" width="400" height="300"></canvas>
 
   <xml id="toolbox" style="display:none">
-    <category name="Events" colour="60">
-      <block type="when_run"></block>
-    </category>
-    <category name="Motion" colour="120">
-      <block type="move_forward"></block>
-      <block type="turn_right"></block>
-      <block type="turn_left"></block>
-      <block type="set_position"></block>
-    </category>
-    <category name="Looks" colour="160">
-      <block type="draw_circle"></block>
-      <block type="draw_square"></block>
-      <block type="change_costume"></block>
-      <block type="set_backdrop"></block>
-      <block type="character_editor"></block>
-    </category>
-    <category name="Control" colour="230">
-      <block type="controls_repeat_ext">
-        <value name="TIMES"><shadow type="math_number"><field name="NUM">4</field></shadow></value>
-      </block>
-      <block type="controls_if"></block>
-    </category>
-    <category name="Math" colour="%{BKY_MATH_HUE}">
-      <block type="math_number"></block>
-      <block type="math_arithmetic"></block>
-      <block type="math_random_int">
-        <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
-        <value name="TO"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
-      </block>
-    </category>
-    <category name="Variables" custom="VARIABLE" colour="%{BKY_VARIABLES_HUE}"></category>
+    <block type="when_run"></block>
+    <block type="move_forward"></block>
+    <block type="change_costume"></block>
   </xml>
 
   <script>
-    const workspace = Blockly.inject('blocklyDiv', {
-      toolbox: document.getElementById('toolbox'),
-      trashcan: true,
-      zoom: { controls: true, wheel: true }
-    });
+    const workspace = Blockly.inject('blocklyDiv', { toolbox: document.getElementById('toolbox') });
 
     const canvas = document.getElementById('canvasArea');
     const ctx = canvas.getContext('2d');
 
-    // Preload costumes images
-    const costumes = {
-      default: new Image(),
-      reversed: new Image(),
-      cat: new Image(),
-      dog: new Image()
-    };
-    costumes.default.src = "https://i.imgur.com/9TLuW2P.png";    // default sprite
-    costumes.reversed.src = "https://i.imgur.com/ghn6RMu.png";   // reversed sprite
-    costumes.cat.src = "https://i.imgur.com/uC1ZT5X.png";        // cat sprite
-    costumes.dog.src = "https://i.imgur.com/h5SZkmB.png";        // dog sprite
+    // Preload image
+    const spriteImg = new Image();
+    spriteImg.src = 'https://i.imgur.com/9TLuW2P.png';
 
-    // Initial state
-    const state = {
-      x: 400,
-      y: 150,
-      angle: 0,
-      backdrop: "#ffffff",
-      costume: "default"
-    };
+    const state = { x: 200, y: 150, angle: 0, costume: 'default' };
 
-    // Draw sprite function draws current costume at current position and angle
     function drawSprite() {
-      const size = 40;
-      const img = costumes[state.costume];
-      if (!img.complete) {
-        img.onload = () => drawSprite();
-        return;
-      }
-      ctx.save();
-      ctx.translate(state.x, state.y);
-      ctx.rotate(state.angle * Math.PI / 180);
-      ctx.drawImage(img, -size / 2, -size / 2, size, size);
-      ctx.restore();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(spriteImg, state.x - 20, state.y - 20, 40, 40);
     }
-
-    // Blockly blocks & generators
 
     Blockly.Blocks['when_run'] = {
-      init: function () {
-        this.appendStatementInput("DO").appendField("when Run clicked");
-        this.setColour(60);
-      },
+      init: function() {
+        this.appendStatementInput('DO').appendField('when run clicked');
+        this.setColour(120);
+      }
     };
-    Blockly.JavaScript['when_run'] = function(block) {
-      const statements_do = Blockly.JavaScript.statementToCode(block, 'DO');
-      return statements_do;
-    };
+    Blockly.JavaScript['when_run'] = block => Blockly.JavaScript.statementToCode(block, 'DO');
 
     Blockly.Blocks['move_forward'] = {
-      init: function () {
-        this.appendDummyInput().appendField("move forward 50px");
+      init: function() {
+        this.appendDummyInput().appendField('move forward 50px');
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(120);
-      },
+      }
     };
-    Blockly.JavaScript['move_forward'] = () => "moveForward();\n";
-
-    Blockly.Blocks['turn_right'] = {
-      init: function () {
-        this.appendDummyInput().appendField("turn right 90°");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(120);
-      },
+    Blockly.JavaScript['move_forward'] = () => {
+      return `state.x += 50;\n`;
     };
-    Blockly.JavaScript['turn_right'] = () => "state.angle += 90;\n";
-
-    Blockly.Blocks['turn_left'] = {
-      init: function () {
-        this.appendDummyInput().appendField("turn left 90°");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(120);
-      },
-    };
-    Blockly.JavaScript['turn_left'] = () => "state.angle -= 90;\n";
-
-    Blockly.Blocks['set_position'] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("set position x")
-          .appendField(new Blockly.FieldNumber(100), "X")
-          .appendField("y")
-          .appendField(new Blockly.FieldNumber(100), "Y");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(120);
-      },
-    };
-    Blockly.JavaScript['set_position'] = (block) =>
-      `state.x=${block.getFieldValue("X")}; state.y=${block.getFieldValue("Y")};\n`;
-
-    Blockly.Blocks['draw_circle'] = {
-      init: function () {
-        this.appendDummyInput().appendField("draw circle");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(160);
-      },
-    };
-    Blockly.JavaScript["draw_circle"] = () =>
-      "ctx.beginPath(); ctx.arc(state.x,state.y,25,0,2*Math.PI); ctx.stroke();\n";
-
-    Blockly.Blocks['draw_square'] = {
-      init: function () {
-        this.appendDummyInput().appendField("draw square");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(160);
-      },
-    };
-    Blockly.JavaScript["draw_square"] = () =>
-      "ctx.strokeRect(state.x-25,state.y-25,50,50);\n";
 
     Blockly.Blocks['change_costume'] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("set costume")
-          .appendField(
-            new Blockly.FieldDropdown([
-              ["default", "default"],
-              ["reversed", "reversed"],
-              ["cat", "cat"],
-              ["dog", "dog"]
-            ]),
-            "COSTUME"
-          );
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(160);
-      },
-    };
-    Blockly.JavaScript["change_costume"] = (block) => {
-      const costume = block.getFieldValue("COSTUME");
-      return `state.costume = "${costume}";\n`;
-    };
-
-    Blockly.Blocks['set_backdrop'] = {
-      init: function () {
-        this.appendDummyInput()
-          .appendField("set backdrop")
-          .appendField(new Blockly.FieldColour("#ffffff"), "COLOR");
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(160);
-      },
-    };
-    Blockly.JavaScript['set_backdrop'] = block => {
-      const color = block.getFieldValue('COLOR');
-      return `canvas.style.background = "${color}"; state.backdrop="${color}";\n`;
-    };
-
-    // NEW: Character Editor block (sets costume)
-    Blockly.Blocks['character_editor'] = {
       init: function() {
         this.appendDummyInput()
-          .appendField("Character Editor - set costume")
-          .appendField(new Blockly.FieldDropdown([
-            ["default", "default"],
-            ["reversed", "reversed"],
-            ["cat", "cat"],
-            ["dog", "dog"]
-          ]), "COSTUME");
-        this.setColour(290);
-        this.setTooltip("Change the sprite costume");
-        this.setHelpUrl("");
+          .appendField('change costume')
+          .appendField(new Blockly.FieldDropdown([['default', 'default']]), 'COSTUME');
         this.setPreviousStatement(true);
         this.setNextStatement(true);
+        this.setColour(160);
       }
     };
-    Blockly.JavaScript['character_editor'] = function(block) {
+    Blockly.JavaScript['change_costume'] = block => {
       const costume = block.getFieldValue('COSTUME');
-      return `state.costume = "${costume}";\n`;
+      return `state.costume = '${costume}';\n`;
     };
 
-    // Movement helper
-    function moveForward() {
-      const rad = (state.angle * Math.PI) / 180;
-      const newX = state.x + Math.cos(rad) * 50;
-      const newY = state.y + Math.sin(rad) * 50;
-      ctx.beginPath();
-      ctx.moveTo(state.x, state.y);
-      ctx.lineTo(newX, newY);
-      ctx.stroke();
-      state.x = newX;
-      state.y = newY;
-    }
-
-    // Run the code
-    function run() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      canvas.style.background = state.backdrop; // keep backdrop
-
-      const code = Blockly.JavaScript.workspaceToCode(workspace);
-
-      const runCode = () => {
-        try {
-          new Function(
-            "ctx",
-            "canvas",
-            "state",
-            "moveForward",
-            "drawSprite",
-            code + "\ndrawSprite();"
-          )(ctx, canvas, state, moveForward, drawSprite);
-        } catch (e) {
-          alert("Error: " + e.message);
-        }
-      };
-
-      runCode();
-    }
-
-    function save() {
-      const xml = Blockly.Xml.workspaceToDom(workspace);
-      const text = Blockly.Xml.domToPrettyText(xml);
-      localStorage.setItem("acucode3", text);
-      alert("Saved!");
-    }
-
-    function load() {
-      const text = localStorage.getItem("acucode3");
-      if (text) {
-        try {
-          const xml = Blockly.Xml.textToDom(text);
-          workspace.clear();
-          Blockly.Xml.domToWorkspace(xml, workspace);
-          alert("Loaded!");
-        } catch (e) {
-          alert("Error loading saved project: " + e.message);
-        }
-      } else {
-        alert("No saved project.");
+    document.getElementById('run').onclick = () => {
+      try {
+        const code = Blockly.JavaScript.workspaceToCode(workspace);
+        new Function('state', code)(state);
+        drawSprite();
+      } catch(e) {
+        alert(e);
       }
-    }
-
-    document.getElementById("run").onclick = run;
-    document.getElementById("save").onclick = save;
-    document.getElementById("load").onclick = load;
-
-    window.onload = () => {
-      load();
-      // Draw initial sprite
-      ctx.fillStyle = state.backdrop;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      drawSprite();
     };
+
+    drawSprite();
   </script>
 </body>
 </html>

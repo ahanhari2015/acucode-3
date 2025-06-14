@@ -2,129 +2,137 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AcuCode 3 - Scratch-style Visual Coder</title>
+  <title>AcuCode 3 Enhanced</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
   <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      font-family: sans-serif;
-    }
-    #blocklyDiv {
-      height: 60vh;
-      width: 100%;
-    }
-    #canvas {
-      border: 1px solid #ccc;
-      width: 100%;
-      height: 30vh;
-      background: white;
-    }
-    #buttons {
-      margin: 10px;
-    }
+    body { margin: 0; font-family: sans-serif; }
+    #blocklyDiv { height: 55vh; width: 100%; }
+    #controls { padding: 10px; background: #f0f0f0; display: flex; gap: 8px; }
+    #canvasArea { width: 100%; height: 30vh; border: 1px solid #ccc; background: #fff; }
   </style>
 </head>
 <body>
   <div id="blocklyDiv"></div>
-  <div id="buttons">
-    <button onclick="runCode()">Run</button>
-    <button onclick="saveWorkspace()">Save</button>
-    <button onclick="loadWorkspace()">Load</button>
+  <div id="controls">
+    <button id="run">▶️ Run</button>
+    <button id="save">💾 Save</button>
+    <input type="file" id="load" accept=".xml">
   </div>
-  <canvas id="canvas" width="800" height="300"></canvas>
+  <canvas id="canvasArea" width="800" height="300"></canvas>
+  <!-- default sprite -->
+  <img id="spriteImg" src="https://i.imgur.com/9TLuW2P.png" style="display:none;">
 
-  <xml id="toolbox" style="display: none">
-    <category name="Motion">
+  <xml id="toolbox" style="display:none">
+    <category name="Events" colour="60">
+      <block type="when_run"></block>
+    </category>
+    <category name="Motion" colour="120">
       <block type="move_forward"></block>
       <block type="turn_right"></block>
       <block type="turn_left"></block>
+      <block type="set_position"></block>
     </category>
-    <category name="Looks">
+    <category name="Looks" colour="160">
       <block type="draw_circle"></block>
       <block type="draw_square"></block>
+      <block type="change_costume"></block>
+      <block type="set_backdrop"></block>
     </category>
-    <category name="Control">
+    <category name="Control" colour="230">
       <block type="controls_repeat_ext">
-        <value name="TIMES">
-          <shadow type="math_number">
-            <field name="NUM">4</field>
-          </shadow>
-        </value>
+        <value name="TIMES"><shadow type="math_number"><field name="NUM">4</field></shadow></value>
       </block>
+      <block type="controls_if"></block>
     </category>
     <category name="Math" colour="%{BKY_MATH_HUE}">
-      <block type="math_number"><field name="NUM">0</field></block>
+      <block type="math_number"></block>
       <block type="math_arithmetic"></block>
+      <block type="math_random_int">
+        <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
+        <value name="TO"><shadow type="math_number"><field name="NUM">10</field></shadow></value>
+      </block>
     </category>
-    <category name="Logic">
-      <block type="controls_if"></block>
-      <block type="logic_compare"></block>
-    </category>
-    <category name="Variables" custom="VARIABLE"></category>
+    <category name="Variables" custom="VARIABLE" colour="%{BKY_VARIABLES_HUE}"></category>
   </xml>
 
   <script>
     const workspace = Blockly.inject('blocklyDiv', {
-      toolbox: document.getElementById('toolbox')
+      toolbox: document.getElementById('toolbox'),
+      trashcan: true,
+      zoom: { controls: true, wheel: true }
     });
 
-    const canvas = document.getElementById('canvas');
+    const canvas = document.getElementById('canvasArea');
     const ctx = canvas.getContext('2d');
+    const spriteImg = document.getElementById('spriteImg');
+    const state = {
+      x: 400, y: 150, angle: 0,
+      costume: 'default',
+      backdrop: '#ffffff'
+    };
 
-    let angle = 0, x = 400, y = 150;
-
-    function resetCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      x = 400;
-      y = 150;
-      angle = 0;
+    function drawSprite() {
+      const size = 40;
+      ctx.save();
+      ctx.translate(state.x, state.y);
+      ctx.rotate(state.angle * Math.PI / 180);
+      ctx.drawImage(spriteImg, -size/2, -size/2, size, size);
+      ctx.restore();
     }
+
+    // BLOCKS
+    Blockly.Blocks['when_run'] = {
+      init: function() {
+        this.appendDummyInput().appendField("when Run clicked");
+        this.setNextStatement(true);
+        this.setColour(60);
+      }
+    };
+    Blockly.JavaScript['when_run'] = () => '';
 
     Blockly.Blocks['move_forward'] = {
       init: function() {
         this.appendDummyInput().appendField("move forward 50px");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
-        this.setColour(230);
-        this.setTooltip('');
-        this.setHelpUrl('');
+        this.setColour(120);
       }
     };
-
-    Blockly.JavaScript['move_forward'] = function() {
-      return `moveForward();\n`;
-    };
+    Blockly.JavaScript['move_forward'] = () => 'moveForward();\n';
 
     Blockly.Blocks['turn_right'] = {
       init: function() {
         this.appendDummyInput().appendField("turn right 90°");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
-        this.setColour(180);
-        this.setTooltip('');
-        this.setHelpUrl('');
+        this.setColour(120);
       }
     };
-
-    Blockly.JavaScript['turn_right'] = function() {
-      return `angle += 90;\n`;
-    };
+    Blockly.JavaScript['turn_right'] = () => 'state.angle+=90;\n';
 
     Blockly.Blocks['turn_left'] = {
       init: function() {
         this.appendDummyInput().appendField("turn left 90°");
         this.setPreviousStatement(true);
         this.setNextStatement(true);
-        this.setColour(180);
-        this.setTooltip('');
-        this.setHelpUrl('');
+        this.setColour(120);
       }
     };
+    Blockly.JavaScript['turn_left'] = () => 'state.angle-=90;\n';
 
-    Blockly.JavaScript['turn_left'] = function() {
-      return `angle -= 90;\n`;
+    Blockly.Blocks['set_position'] = {
+      init: function() {
+        this.appendDummyInput()
+          .appendField("set position x")
+          .appendField(new Blockly.FieldNumber(100), "X")
+          .appendField("y")
+          .appendField(new Blockly.FieldNumber(100), "Y");
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(120);
+      }
     };
+    Blockly.JavaScript['set_position'] = block => `state.x=${block.getFieldValue('X')};state.y=${block.getFieldValue('Y')};\n`;
 
     Blockly.Blocks['draw_circle'] = {
       init: function() {
@@ -132,16 +140,9 @@
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(160);
-        this.setTooltip('');
-        this.setHelpUrl('');
       }
     };
-
-    Blockly.JavaScript['draw_circle'] = function() {
-      return `ctx.beginPath();
-ctx.arc(x, y, 25, 0, 2 * Math.PI);
-ctx.stroke();\n`;
-    };
+    Blockly.JavaScript['draw_circle'] = () => 'ctx.beginPath(); ctx.arc(state.x,state.y,25,0,2*Math.PI); ctx.stroke();\n';
 
     Blockly.Blocks['draw_square'] = {
       init: function() {
@@ -149,54 +150,89 @@ ctx.stroke();\n`;
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(160);
-        this.setTooltip('');
-        this.setHelpUrl('');
       }
     };
+    Blockly.JavaScript['draw_square'] = () => 'ctx.strokeRect(state.x-25,state.y-25,50,50);\n';
 
-    Blockly.JavaScript['draw_square'] = function() {
-      return `ctx.strokeRect(x - 25, y - 25, 50, 50);\n`;
+    Blockly.Blocks['change_costume'] = {
+      init: function() {
+        this.appendDummyInput()
+          .appendField("set costume")
+          .appendField(new Blockly.FieldDropdown([
+            ["default","default"],
+            ["reversed","reversed"]
+          ]),"COSTUME");
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(160);
+      }
     };
+    Blockly.JavaScript['change_costume'] = block => `state.costume='${block.getFieldValue('COSTUME')}'; spriteImg.src= costume==='reversed' ? 'https://i.imgur.com/ghn6RMu.png':'https://i.imgur.com/9TLuW2P.png';\n`;
 
+    Blockly.Blocks['set_backdrop'] = {
+      init: function() {
+        this.appendDummyInput()
+          .appendField("set backdrop")
+          .appendField(new Blockly.FieldColour("#ffffff"),"COLOR");
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(160);
+      }
+    };
+    Blockly.JavaScript['set_backdrop'] = block => `state.backdrop='${block.getFieldValue('COLOR')}';canvas.style.background=state.backdrop;\n`;
+
+    // UTILS
     function moveForward() {
-      const radians = angle * (Math.PI / 180);
-      const newX = x + Math.cos(radians) * 50;
-      const newY = y + Math.sin(radians) * 50;
+      const rad = state.angle * Math.PI/180;
+      const newX = state.x + Math.cos(rad)*50;
+      const newY = state.y + Math.sin(rad)*50;
       ctx.beginPath();
-      ctx.moveTo(x, y);
+      ctx.moveTo(state.x, state.y);
       ctx.lineTo(newX, newY);
       ctx.stroke();
-      x = newX;
-      y = newY;
+      state.x=newX; state.y=newY;
     }
 
-    function runCode() {
-      resetCanvas();
+    function run() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      canvas.style.background = state.backdrop;
+      spriteImg.onload = () => {}; // ensure available
       const code = Blockly.JavaScript.workspaceToCode(workspace);
       try {
-        eval(code);
-      } catch (e) {
+        new Function('ctx','canvas','state','moveForward','drawSprite',code+'drawSprite();')(ctx,canvas,state,moveForward,drawSprite);
+      } catch(e) {
         alert(e);
       }
     }
 
-    function saveWorkspace() {
+    function save() {
       const xml = Blockly.Xml.workspaceToDom(workspace);
-      const xmlText = Blockly.Xml.domToText(xml);
-      localStorage.setItem("acucode3", xmlText);
-      alert("Project saved!");
+      const text = Blockly.Xml.domToPrettyText(xml);
+      localStorage.setItem('acucode3', text);
+      alert('Saved!');
     }
 
-    function loadWorkspace() {
-      const xmlText = localStorage.getItem("acucode3");
-      if (xmlText) {
-        const xml = Blockly.Xml.textToDom(xmlText);
-        Blockly.Xml.domToWorkspace(xml, workspace);
-        alert("Project loaded!");
-      } else {
-        alert("No saved project found.");
-      }
+    function load() {
+      const text = localStorage.getItem('acucode3');
+      if(text){
+        const xml=Blockly.Xml.textToDom(text);
+        Blockly.Xml.clearWorkspaceAndLoadFromXml(xml, workspace);
+        alert('Loaded!');
+      } else alert('No saved project.');
     }
+
+    document.getElementById('run').onclick = run;
+    document.getElementById('save').onclick = save;
+    document.getElementById('load').onchange = e => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        Blockly.Xml.clearWorkspaceAndLoadFromXml(Blockly.Xml.textToDom(reader.result),workspace);
+      };
+      reader.readAsText(e.target.files[0]);
+    };
+
+    // Auto-load saved state if present
+    window.onload = load;
   </script>
 </body>
 </html>

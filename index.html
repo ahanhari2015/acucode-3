@@ -1,42 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8" />
+  <title>AcuCode 3</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <style>
+    #blocklyDiv { height: 300px; width: 100%; }
+    #canvas { border: 1px solid black; margin-top: 10px; }
+  </style>
 </head>
 <body>
-  <div id="blocklyDiv" style="height:350px;width:100%;"></div>
-  <button id="run">Run</button>
-  <canvas id="canvas" width="400" height="300" style="border:1px solid #ccc"></canvas>
+  <h1>AcuCode 3</h1>
+  <div id="blocklyDiv"></div>
+  <button id="runBtn">Run</button>
+  <button id="saveBtn">Save</button>
+  <button id="loadBtn">Load</button>
+  <canvas id="canvas" width="400" height="300"></canvas>
 
-  <xml id="toolbox" style="display:none">
-    <block type="move"></block>
+  <xml id="toolbox" style="display: none">
+    <block type="when_run"></block>
+    <block type="move_forward"></block>
+    <block type="change_costume"></block>
   </xml>
 
   <script>
-    const workspace = Blockly.inject('blocklyDiv', { toolbox: document.getElementById('toolbox') });
-    const ctx = document.getElementById('canvas').getContext('2d');
-    let x = 50, y = 150;
+    const workspace = Blockly.inject('blocklyDiv', {
+      toolbox: document.getElementById('toolbox')
+    });
 
-    Blockly.Blocks['move'] = {
+    // Sprite state
+    const state = { x: 50, y: 150, costume: 'default' };
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const spriteImg = new Image();
+    spriteImg.src = 'https://i.imgur.com/9TLuW2P.png';
+
+    function drawSprite() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(spriteImg, state.x, state.y, 40, 40);
+    }
+
+    // Custom blocks
+    Blockly.Blocks['when_run'] = {
       init: function() {
-        this.appendDummyInput().appendField('move 20');
+        this.appendStatementInput('DO').appendField('when run clicked');
+        this.setColour(290);
+      }
+    };
+    Blockly.JavaScript['when_run'] = function(block) {
+      return Blockly.JavaScript.statementToCode(block, 'DO');
+    };
+
+    Blockly.Blocks['move_forward'] = {
+      init: function() {
+        this.appendDummyInput().appendField('move forward 20');
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(120);
       }
     };
-    Blockly.JavaScript['move'] = () => 'x += 20;\n';
+    Blockly.JavaScript['move_forward'] = function(block) {
+      return 'state.x += 20;\n';
+    };
 
-    document.getElementById('run').onclick = () => {
-      const code = Blockly.JavaScript.workspaceToCode(workspace);
-      x = 50; y = 150;
-      ctx.clearRect(0,0,400,300);
-      try {
-        new Function('x','y', code + 'ctx.fillRect(x,y,10,10);')(x, y);
-      } catch (e) {
-        alert('Error: '+e.message);
+    Blockly.Blocks['change_costume'] = {
+      init: function() {
+        this.appendDummyInput().appendField('change costume to')
+          .appendField(new Blockly.FieldDropdown([['default', 'default']]), 'COSTUME');
+        this.setPreviousStatement(true);
+        this.setNextStatement(true);
+        this.setColour(160);
       }
     };
+    Blockly.JavaScript['change_costume'] = function(block) {
+      const costume = block.getFieldValue('COSTUME');
+      return `state.costume = '${costume}';\n`;
+    };
+
+    // Button actions
+    document.getElementById('runBtn').onclick = () => {
+      const code = Blockly.JavaScript.workspaceToCode(workspace);
+      state.x = 50; state.y = 150;
+      try {
+        new Function('state', 'ctx', code + 'drawSprite();')(state, ctx);
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    };
+
+    document.getElementById('saveBtn').onclick = () => {
+      const xml = Blockly.Xml.workspaceToDom(workspace);
+      localStorage.setItem('acucode_project', Blockly.Xml.domToText(xml));
+    };
+
+    document.getElementById('loadBtn').onclick = () => {
+      const xmlText = localStorage.getItem('acucode_project');
+      if (!xmlText) return alert('No saved project.');
+      const xml = Blockly.Xml.textToDom(xmlText);
+      Blockly.Xml.domToWorkspace(xml, workspace);
+    };
+
+    spriteImg.onload = drawSprite;
   </script>
 </body>
 </html>

@@ -1,88 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Simple Blockly Sprite Test</title>
   <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-  <style>
-    #blocklyDiv { height: 350px; width: 100%; }
-    #canvasArea { border: 1px solid black; }
-  </style>
 </head>
 <body>
-  <div id="blocklyDiv"></div>
+  <div id="blocklyDiv" style="height:350px;width:100%;"></div>
   <button id="run">Run</button>
-  <canvas id="canvasArea" width="400" height="300"></canvas>
+  <canvas id="canvas" width="400" height="300" style="border:1px solid #ccc"></canvas>
 
   <xml id="toolbox" style="display:none">
-    <block type="when_run"></block>
-    <block type="move_forward"></block>
-    <block type="change_costume"></block>
+    <block type="move"></block>
   </xml>
 
   <script>
     const workspace = Blockly.inject('blocklyDiv', { toolbox: document.getElementById('toolbox') });
+    const ctx = document.getElementById('canvas').getContext('2d');
+    let x = 50, y = 150;
 
-    const canvas = document.getElementById('canvasArea');
-    const ctx = canvas.getContext('2d');
-
-    // Preload image
-    const spriteImg = new Image();
-    spriteImg.src = 'https://i.imgur.com/9TLuW2P.png';
-
-    const state = { x: 200, y: 150, angle: 0, costume: 'default' };
-
-    function drawSprite() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(spriteImg, state.x - 20, state.y - 20, 40, 40);
-    }
-
-    Blockly.Blocks['when_run'] = {
+    Blockly.Blocks['move'] = {
       init: function() {
-        this.appendStatementInput('DO').appendField('when run clicked');
-        this.setColour(120);
-      }
-    };
-    Blockly.JavaScript['when_run'] = block => Blockly.JavaScript.statementToCode(block, 'DO');
-
-    Blockly.Blocks['move_forward'] = {
-      init: function() {
-        this.appendDummyInput().appendField('move forward 50px');
+        this.appendDummyInput().appendField('move 20');
         this.setPreviousStatement(true);
         this.setNextStatement(true);
         this.setColour(120);
       }
     };
-    Blockly.JavaScript['move_forward'] = () => {
-      return `state.x += 50;\n`;
-    };
-
-    Blockly.Blocks['change_costume'] = {
-      init: function() {
-        this.appendDummyInput()
-          .appendField('change costume')
-          .appendField(new Blockly.FieldDropdown([['default', 'default']]), 'COSTUME');
-        this.setPreviousStatement(true);
-        this.setNextStatement(true);
-        this.setColour(160);
-      }
-    };
-    Blockly.JavaScript['change_costume'] = block => {
-      const costume = block.getFieldValue('COSTUME');
-      return `state.costume = '${costume}';\n`;
-    };
+    Blockly.JavaScript['move'] = () => 'x += 20;\n';
 
     document.getElementById('run').onclick = () => {
+      const code = Blockly.JavaScript.workspaceToCode(workspace);
+      x = 50; y = 150;
+      ctx.clearRect(0,0,400,300);
       try {
-        const code = Blockly.JavaScript.workspaceToCode(workspace);
-        new Function('state', code)(state);
-        drawSprite();
-      } catch(e) {
-        alert(e);
+        new Function('x','y', code + 'ctx.fillRect(x,y,10,10);')(x, y);
+      } catch (e) {
+        alert('Error: '+e.message);
       }
     };
-
-    drawSprite();
   </script>
 </body>
 </html>
